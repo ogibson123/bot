@@ -1,0 +1,12 @@
+{
+    "commands": [
+        {"name": "Covid",
+        "description": "Fetches COVID-19 statistics from the web.",
+        "usage": "!covid, !covid usa, !covid {2-letter state abbreivation}"
+    },
+        {"name": "Echo",
+        "description": "Echoes the phrase given after the command",
+        "usage": "!echo (insert any phrase here)"}
+    
+    ]
+}
