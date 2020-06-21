@@ -9,5 +9,5 @@ module.exports = {
         message.channel.send("Echo what? You didn't say anything!")
     else
         message.channel.send(args.join(' '));
-}
+  }
 }
