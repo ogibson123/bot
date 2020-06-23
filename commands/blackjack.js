@@ -1,4 +1,5 @@
 const Discord = require('discord.js');
+const fs = require('fs')
 const money = require('../money.json');
 const suits = ['Spades', 'Clubs', 'Hearts', 'Diamonds'];
 var deck = [];
@@ -10,6 +11,8 @@ var currentPlayer = null;
 
 module.exports = {
     name: "blackjack",
+    description: "Bet some of your money on a game of Blackjack. You can hit or stay after placing a bet and seeing your cards.",
+    usage: "!blackjack {bet amount}, !blackjack hit, !blackjack stay",
     run: async (bot, message, args) => {
         if(args.length===0) {
             if(!gameInProgress)
@@ -36,6 +39,8 @@ function initializeGame(message, args){
     playerBet = args[0];
     currentPlayer = message.author.id;
     deck = new Deck();
+    
+    //Draw the 2 initial cards
     playerHand.push(deck.drawCard());
     dealerHand.push(deck.drawCard());
     playerHand.push(deck.drawCard());
@@ -61,8 +66,8 @@ function printGameState(message, playerTotal, dealerTotal){
         .attachFiles(attachment)
         .setThumbnail("attachment://gamble.png")
         .addFields(
-            {name: "**Your Hand:**", value: convertPlayerHandToString(playerHand, false) + "\nValue: " + playerTotal, inline: true},
-            {name: "**Dealer's Hand:**", value: convertDealerHandToString(dealerHand, true), inline: true})
+            {name: "**Your Hand:**", value: convertPlayerHandToString(playerHand) + "\nValue: " + playerTotal, inline: true},
+            {name: "**Dealer's Hand:**", value: convertDealerHandToString(dealerHand), inline: true})
         .setFooter("Tip: Use !blackjack hit or !blackjack stay to either hit or stay.");
         
         message.channel.send({embed: embed});
@@ -79,14 +84,19 @@ function processCommand(message, args){
         playerStayed = true;
     let playerTotal = playerHand.reduce((total, card)=>total+card.getValue(), 0);
     let dealerTotal = dealerHand.reduce((total, card)=>total+card.getValue(), 0);
-
-    if(dealerTotal>17)
+    
+    //Dealer should draw a card if their value is under 17
+    if(dealerTotal<17){
         dealerHand.push(deck.drawCard());
-    else
+    } else {
         dealerStayed = true;
+    }
+    let newDealerTotal = dealerHand.reduce((total, card)=>total+card.getValue(), 0);
     console.log(dealerHand);
-    if(playerTotal >= 21 || dealerTotal >= 21 || dealerStayed && playerStayed)
-        gameOver(message, playerTotal, dealerTotal);
+    
+    //Check if game should end
+    if(playerTotal >= 21 || newDealerTotal >= 21 || dealerStayed && playerStayed)
+        gameOver(message, playerTotal, newDealerTotal);
     else
         printGameState(message, playerTotal, dealerTotal);
 }
@@ -96,22 +106,44 @@ function gameOver(message, playerTotal, dealerTotal){
     let tie = false;
     if(playerTotal === dealerTotal || playerTotal > 21 && dealerTotal > 21){
         tie = true;
-    } else if (playerTotal > dealerTotal && playerTotal <= 21){
+    } else if (dealerTotal > 21 || playerTotal > dealerTotal && playerTotal <= 21){
         playerWins = true;
     }
+
+    scoreString = "\nYou had: " + playerTotal + "\nDealer had: " + dealerTotal;
     if(tie){
-        message.channel.send("Game over. It was a tie!\n You keep your money.");
+        message.channel.send("Game over. It was a tie!\n You keep your money." + scoreString);
     }
-    if(playerWins){
+    else if(playerWins){
         money[currentPlayer].money += playerBet;
-        message.channel.send("Game over.\nYou won $" + playerBet);
+        fs.writeFile("../money.json", JSON.stringify(money), err => {
+            if(err) console.log(err);
+        });
+        message.channel.send("Game over.\nYou won $" + playerBet + scoreString);
     } else {
         money[currentPlayer].money -= playerBet;
-        message.channel.send("Game over.\nYou lost $" + playerBet);
+        fs.writeFile("../money.json", JSON.stringify(money), err => {
+            if(err) console.log(err);
+        });
+        message.channel.send("Game over.\nYou lost $" + playerBet + scoreString);
     }
 
-    //Reset the game variables in case you wanna play again.
-    printGameState(message, playerTotal, dealerTotal);
+    //Print the final game state, but this time with the dealer's first card un-hidden.
+    const attachment = new Discord.MessageAttachment('./thumbnails/gamble.png', 'gamble.png');
+    const embed = new Discord.MessageEmbed()
+        .setColor("#00b524")
+        .setTitle("Blackjack")
+        .setDescription("Bet: $" + playerBet)
+        .attachFiles(attachment)
+        .setThumbnail("attachment://gamble.png")
+        .addFields(
+            {name: "**Your Hand:**", value: convertPlayerHandToString(playerHand) + "\nValue: " + playerTotal, inline: true},
+            {name: "**Dealer's Hand:**", value: convertPlayerHandToString(dealerHand), inline: true})
+        .setFooter("Your balance may have updated. Check it with !balance.");
+        
+        message.channel.send({embed: embed});
+
+    //Reset the game variables in case you want to play again.
     playerHand = [];
     dealerHand = [];
     deck = [];
@@ -133,12 +165,13 @@ function convertDealerHandToString(hand){
     let string = "";
     let isFirstCard = true;
     hand.forEach(card => {
-        if(isFirstCard){
-            isFirstCard = false; string+=card.val + " of " + card.suit + "\n";
-        } else
+        //Hide the dealer's first card from the player
+        if(isFirstCard)
             string+='???\n'
-        }
-    )
+        else
+            string+=card.val + " of " + card.suit + "\n";
+        isFirstCard = false;
+    });
     return string;
 }
 

@@ -3,6 +3,8 @@ const randomPuppy = require("random-puppy");
 
 module.exports = {
     name: "meme",
+    description: "Pull a random meme from Reddit.",
+    usage: "!meme",
     run: async(bot, message, args) => {
         fetchRandomMeme(message);
     }

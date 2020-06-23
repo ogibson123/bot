@@ -4,6 +4,8 @@ const Discord = require('discord.js');
 
 module.exports = {
   name: "echo",
+  description: "Echoes the phrase given after the command",
+  usage: "!echo (insert any phrase here)",
   run: async (bot, message, args) => {
     if(args.length === 0) 
         message.channel.send("Echo what? You didn't say anything!")

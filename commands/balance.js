@@ -3,6 +3,8 @@ const money = require("../money.json");
 
 module.exports = {
     name: "balance",
+    description: "This command will check your bank account to see how much money you have.",
+    usage: "!balance",
     run: async (bot, message, args) => {
         getBalance(bot, message);
     }

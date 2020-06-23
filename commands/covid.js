@@ -5,6 +5,8 @@ const states = require('../states.json');
 
 module.exports = {
     name: "covid",
+    description: "Fetches COVID-19 statistics from the web.",
+    usage: "!covid, !covid usa, !covid state",
     run: async (bot, message, args) => {
       if(args.length === 0) 
           getGeneralCovidStats(message);
